@@ -1,0 +1,34 @@
+name: NEW_REPO_RDP
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Install Ngrok
+        run: |
+          choco install ngrok -y
+          Import-Module "$env:ProgramData\chocolatey\helpers\chocolateyInstaller.psm1"
+          Update-SessionEnvironment
+
+      - name: Configure Ngrok
+        # Aapka naya token yahan update kar diya gaya hai
+        run: ngrok config add-authtoken 37J4U5jObChNglLnWMWZsmiJzxh_5oGgi1nnRNQfRFf1qC2eN
+
+      - name: Enable Windows RDP
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: Start Tunnel
+        shell: pwsh
+        run: |
+          # Asia region (ap) sabse fast connection deta hai
+          Start-Process ngrok -ArgumentList "tcp --region ap 3389"
+          Write-Host "Waiting 30 seconds for Ngrok to connect..."
+          Start-Sleep -Seconds 30
+
+      - name: Keep Alive
+        run: |
+          Write-Host "RDP is Ready! Now check your Ngrok Endpoints Page."
+          Start-Sleep -Seconds 21600
