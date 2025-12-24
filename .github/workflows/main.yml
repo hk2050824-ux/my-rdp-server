@@ -1,26 +1,31 @@
-name: FINAL_RDP_DIRECT
+name: CLOUDFLARE_FREE_RDP
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Install Ngrok
-        run: |
-          choco install ngrok -y
-          Import-Module "$env:ProgramData\chocolatey\helpers\chocolateyInstaller.psm1"
-          Update-SessionEnvironment
-
-      - name: Configure Ngrok
-        run: ngrok config add-authtoken 37J4U5jObChNglLnWMWZsmiJzxh_5oGgi1nnRNQfRFf1qC2eN
-
       - name: Enable Windows RDP
         run: |
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          net user runneradmin P@ssw0rd! /add
+          net localgroup administrators runneradmin /add
 
-      - name: Start Ngrok Tunnel Direct
+      - name: Install & Start Cloudflare Tunnel
+        shell: pwsh
         run: |
-          # Is baar hum ngrok ko direct run karenge takay address logs mein dikhayi de
-          Write-Host "Starting tunnel... Address will appear below in a few seconds."
-          ngrok tcp --region ap 3389
+          # Cloudflare binary download karein
+          Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.msi" -OutFile "cloudflared.msi"
+          Start-Process msiexec.exe -ArgumentList "/i cloudflared.msi /quiet" -Wait
+          
+          # Tunnel start karein aur link generate karein
+          Write-Host "Starting Cloudflare Tunnel... Please wait."
+          Start-Process cloudflared.exe -ArgumentList "tunnel --url tcp://localhost:3389" -RedirectStandardOutput "tunnel_logs.txt"
+          
+          # 20 second rukan takay link generate ho jaye
+          Start-Sleep -Seconds 20
+          Get-Content "tunnel_logs.txt" | Select-String "trycloudflare.com"
+
+      - name: Keep Alive
+        run: Start-Sleep -Seconds 21600
